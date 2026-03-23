@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIELIT NSQF — Excel Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161e;
+    --surface2: #1a1e28;
+    --border: #252a38;
+    --accent: #4ade80;
+    --accent2: #38bdf8;
+    --accent3: #fb923c;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --error: #f87171;
+    --success: #4ade80;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* Noise grain overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 999; opacity: 0.35;
+  }
+
+  header {
+    padding: 32px 40px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 20px;
+    background: linear-gradient(90deg, rgba(74,222,128,0.04) 0%, transparent 60%);
+  }
+
+  .logo {
+    width: 48px; height: 48px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700; font-size: 18px;
+    color: #000;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  header p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  .badge {
+    margin-left: auto;
+    background: rgba(74,222,128,0.1);
+    border: 1px solid rgba(74,222,128,0.3);
+    color: var(--accent);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  /* STEPS */
+  .steps {
+    display: flex;
+    gap: 0;
+    margin-bottom: 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .step {
+    flex: 1; padding: 14px 16px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 600; color: var(--muted);
+    border-right: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .step:last-child { border-right: none; }
+  .step.active { color: var(--accent); background: rgba(74,222,128,0.05); }
+  .step.done { color: var(--accent2); }
+
+  .step-num {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .step.active .step-num { background: var(--accent); color: #000; }
+  .step.done .step-num { background: var(--accent2); color: #000; }
+
+  /* PANELS */
+  .panel { display: none; animation: fadeIn 0.3s ease; }
+  .panel.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-size: 14px; font-weight: 800; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .card-title::before {
+    content: '';
+    display: block; width: 3px; height: 16px;
+    background: var(--accent); border-radius: 2px;
+  }
+
+  /* DROP ZONE */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface2);
+    position: relative;
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(74,222,128,0.04);
+  }
+
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0;
+    opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+
+  .drop-icon { font-size: 36px; margin-bottom: 12px; }
+  .drop-label { font-size: 15px; font-weight: 600; color: var(--text); }
+  .drop-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  .file-loaded {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(74,222,128,0.08);
+    border: 1px solid rgba(74,222,128,0.25);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-top: 12px;
+  }
+
+  .file-loaded-icon { font-size: 22px; }
+  .file-loaded-name { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--accent); }
+  .file-loaded-count { font-size: 11px; color: var(--muted); }
+  .file-remove { margin-left: auto; cursor: pointer; color: var(--error); font-size: 18px; background: none; border: none; }
+
+  /* FORM FIELDS */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .form-grid.full { grid-template-columns: 1fr; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+
+  .field input, .field select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: var(--surface2); }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px;
+    border-radius: var(--radius);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; border: none;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+
+  .btn-primary {
+    background: var(--accent); color: #000;
+  }
+  .btn-primary:hover { background: #86efac; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(74,222,128,0.3); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .btn-secondary {
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .btn-outline {
+    background: transparent; color: var(--accent2);
+    border: 1px solid var(--accent2);
+  }
+  .btn-outline:hover { background: rgba(56,189,248,0.08); }
+
+  .btn-danger {
+    background: transparent; color: var(--error);
+    border: 1px solid rgba(248,113,113,0.3);
+  }
+
+  .btn-row {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    margin-top: 24px; align-items: center;
+  }
+
+  /* COURSE TYPE TOGGLE */
+  .type-select {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; margin-bottom: 24px;
+  }
+
+  .type-option {
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .type-option:hover { border-color: var(--accent); }
+  .type-option.selected { border-color: var(--accent); background: rgba(74,222,128,0.06); }
+  .type-option .type-icon { font-size: 28px; margin-bottom: 6px; }
+  .type-option .type-name { font-size: 13px; font-weight: 700; }
+  .type-option .type-desc { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* PREVIEW TABLE */
+  .preview-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  thead { position: sticky; top: 0; z-index: 1; }
+
+  th {
+    background: var(--surface2);
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* OUTPUT CARDS */
+  .output-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .output-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 12px;
+    transition: border-color 0.2s;
+  }
+
+  .output-card:hover { border-color: var(--accent2); }
+  .output-card.generated { border-color: rgba(74,222,128,0.4); }
+
+  .output-card-header {
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .output-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .output-icon.attendance { background: rgba(56,189,248,0.12); }
+  .output-icon.internal { background: rgba(251,146,60,0.12); }
+  .output-icon.result { background: rgba(74,222,128,0.12); }
+
+  .output-name { font-size: 14px; font-weight: 700; }
+  .output-sheets { font-size: 11px; color: var(--muted); }
+
+  .output-status {
+    font-size: 11px; font-family: 'Space Mono', monospace;
+    padding: 4px 10px; border-radius: 20px;
+    background: var(--surface2); color: var(--muted);
+    border: 1px solid var(--border);
+    width: fit-content;
+  }
+
+  .output-status.ready { background: rgba(74,222,128,0.1); color: var(--accent); border-color: rgba(74,222,128,0.3); }
+
+  /* NOTICE */
+  .notice {
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+
+  .notice.info { background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2); color: var(--accent2); }
+  .notice.warn { background: rgba(251,146,60,0.08); border: 1px solid rgba(251,146,60,0.2); color: var(--accent3); }
+  .notice.success { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); color: var(--accent); }
+
+  /* LOADING */
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* PROGRESS */
+  .progress-bar {
+    height: 4px; background: var(--border);
+    border-radius: 2px; overflow: hidden;
+    margin-top: 8px;
+  }
+
+  .progress-fill {
+    height: 100%; background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  /* TAG */
+  .tag {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px; border-radius: 12px;
+    font-size: 10px; font-weight: 700;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .tag.eai { background: rgba(56,189,248,0.15); color: var(--accent2); }
+  .tag.fsda { background: rgba(251,146,60,0.15); color: var(--accent3); }
+
+  /* log */
+  .log-area {
+    background: #090b10;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    max-height: 180px;
+    overflow-y: auto;
+    line-height: 1.8;
+  }
+
+  .log-line { color: var(--muted); }
+  .log-line.ok { color: var(--accent); }
+  .log-line.warn { color: var(--accent3); }
+  .log-line.err { color: var(--error); }
+
+  @media (max-width: 640px) {
+    .form-grid, .output-grid, .type-select { grid-template-columns: 1fr; }
+    header { padding: 20px 16px; }
+    .steps { flex-direction: column; }
+    .step { border-right: none; border-bottom: 1px solid var(--border); }
+    .step:last-child { border-bottom: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">NL</div>
+  <div>
+    <h1>NIELIT NSQF — Excel Generator</h1>
+    <p>Auto-generate Attendance, Internal Assessment &amp; Result sheets from RO source data</p>
+  </div>
+  <span class="badge">v1.0</span>
+</header>
+
+<div class="container">
+
+  <!-- STEPS -->
+  <div class="steps">
+    <div class="step active" id="step1-nav" onclick="goStep(1)">
+      <div class="step-num">1</div> Upload Source File
+    </div>
+    <div class="step" id="step2-nav" onclick="goStep(2)">
+      <div class="step-num">2</div> Configure Details
+    </div>
+    <div class="step" id="step3-nav" onclick="goStep(3)">
+      <div class="step-num">3</div> Preview &amp; Generate
+    </div>
+  </div>
+
+  <!-- STEP 1: UPLOAD -->
+  <div class="panel active" id="panel1">
+    <div class="card">
+      <div class="card-title">Select Course Type</div>
+      <div class="type-select">
+        <div class="type-option selected" id="type-eai" onclick="selectType('EAI')">
+          <div class="type-icon">🤖</div>
+          <div class="type-name">Essentials of AI</div>
+          <div class="type-desc">EAI — I091 · 1 Theory Sheet + 1 Practical Sheet</div>
+        </div>
+        <div class="type-option" id="type-fsda" onclick="selectType('FSDA')">
+          <div class="type-icon">💻</div>
+          <div class="type-name">Full Stack Dev Associate</div>
+          <div class="type-desc">FSDA — I090 · 2 Theory Sheets + 1 Practical Sheet</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Upload RO Source File</div>
+      <div class="notice info">
+        <span>ℹ️</span>
+        <span>Upload the original RO data file (e.g. <code>RO_EAI_100326_aa.xlsx</code> or <code>RO_FSDA_120326.xlsx</code>). All student details will be extracted automatically.</span>
+      </div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="roFile" accept=".xlsx,.xls" onchange="handleFile(this.files[0])">
+        <div class="drop-icon">📂</div>
+        <div class="drop-label">Drop your RO Excel file here</div>
+        <div class="drop-sub">or click to browse · .xlsx / .xls</div>
+      </div>
+      <div id="fileLoaded" style="display:none"></div>
+    </div>
+
+    <div id="preview-section" style="display:none">
+      <div class="card">
+        <div class="card-title">Student Preview</div>
+        <div class="preview-wrap">
+          <table id="preview-table">
+            <thead id="preview-head"></thead>
+            <tbody id="preview-body"></tbody>
+          </table>
+        </div>
+        <p id="preview-count" style="margin-top:12px; font-size:12px; color:var(--muted)"></p>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goStep(2)" id="step1-next" disabled>Configure Details →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: CONFIGURE -->
+  <div class="panel" id="panel2">
+    <div class="card">
+      <div class="card-title">Institute &amp; Exam Info</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Institute Name</label>
+          <input type="text" id="cfg-institute" placeholder="e.g. SHIV EDUCATION SOCIETY">
+        </div>
+        <div class="field">
+          <label>Exam Cycle / Month</label>
+          <input type="text" id="cfg-cycle" placeholder="e.g. March 2026">
+        </div>
+        <div class="field">
+          <label>Theory Exam Date</label>
+          <input type="date" id="cfg-theory-date">
+        </div>
+        <div class="field">
+          <label>Practical Exam Date</label>
+          <input type="date" id="cfg-prac-date">
+        </div>
+        <div class="field">
+          <label>Theory Exam Time</label>
+          <input type="text" id="cfg-theory-time" placeholder="e.g. 09:30:00">
+        </div>
+        <div class="field">
+          <label>Practical Exam Time</label>
+          <input type="text" id="cfg-prac-time" placeholder="e.g. 14:00:00">
+        </div>
+        <div id="theory2-time-field" class="field" style="display:none">
+          <label>Theory 2 Exam Time</label>
+          <input type="text" id="cfg-theory2-time" placeholder="e.g. 12 noon">
+        </div>
+        <div class="field">
+          <label>Batch</label>
+          <input type="text" id="cfg-batch" placeholder="e.g. 09:30:00">
+        </div>
+        <div class="field">
+          <label>Start Date</label>
+          <input type="date" id="cfg-start-date">
+        </div>
+        <div class="field">
+          <label>End Date</label>
+          <input type="date" id="cfg-end-date">
+        </div>
+        <div class="field">
+          <label>Course Code</label>
+          <input type="text" id="cfg-course-code" placeholder="e.g. I091 or I090">
+        </div>
+        <div class="field">
+          <label>Regional Centre Name</label>
+          <input type="text" id="cfg-rc-name" placeholder="e.g. NIELIT ROPAR">
+        </div>
+        <div class="field">
+          <label>Training Partner Code</label>
+          <input type="text" id="cfg-tp-code" placeholder="e.g. PBE-1000006-1357">
+        </div>
+        <div class="field">
+          <label>Course Duration</label>
+          <input type="text" id="cfg-duration" placeholder="e.g. 120 Hrs or 330 Hrs">
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
+      <button class="btn btn-primary" onclick="goStep(3)">Preview &amp; Generate →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: GENERATE -->
+  <div class="panel" id="panel3">
+    <div id="generate-summary" class="card">
+      <div class="card-title">Summary</div>
+      <div id="summary-content"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Files to Generate</div>
+      <div class="output-grid" id="output-grid"></div>
+    </div>
+
+    <div id="log-section" style="display:none">
+      <div class="card">
+        <div class="card-title">Generation Log</div>
+        <div class="log-area" id="log-area"></div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(2)">← Back</button>
+      <button class="btn btn-primary" id="gen-btn" onclick="generateAll()">
+        ⚡ Generate All Excel Files
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let state = {
+  courseType: 'EAI',
+  students: [],
+  workbook: null,
+  currentStep: 1,
+  generatedFiles: []
+};
+
+// ─── Navigation ──────────────────────────────────────────────────────────────
+function goStep(n) {
+  if (n === 1) { activateStep(1); return; }
+  if (n === 2 && state.students.length === 0) { alert('Please upload a source file first.'); return; }
+  if (n === 2) { activateStep(2); populateConfigFromData(); return; }
+  if (n === 3) { activateStep(3); buildSummary(); buildOutputGrid(); return; }
+}
+
+function activateStep(n) {
+  state.currentStep = n;
+  [1,2,3].forEach(i => {
+    document.getElementById(`panel${i}`).classList.toggle('active', i === n);
+    const nav = document.getElementById(`step${i}-nav`);
+    nav.classList.remove('active', 'done');
+    if (i === n) nav.classList.add('active');
+    else if (i < n) nav.classList.add('done');
+  });
+}
+
+// ─── Course Type ─────────────────────────────────────────────────────────────
+function selectType(type) {
+  state.courseType = type;
+  document.getElementById('type-eai').classList.toggle('selected', type === 'EAI');
+  document.getElementById('type-fsda').classList.toggle('selected', type === 'FSDA');
+  document.getElementById('theory2-time-field').style.display = type === 'FSDA' ? '' : 'none';
+  if (state.students.length > 0) renderPreview();
+}
+
+// ─── File Upload ──────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+    // Find header row (row with Course_name)
+    let headerIdx = raw.findIndex(r => r.some(c => String(c||'').includes('Course_name') || String(c||'').includes('Candidate_Name')));
+    if (headerIdx < 0) headerIdx = 0;
+    const headers = raw[headerIdx];
+    const students = [];
+    for (let i = headerIdx + 1; i < raw.length; i++) {
+      const row = raw[i];
+      if (!row || row.every(c => !c)) continue;
+      const obj = {};
+      headers.forEach((h, j) => { obj[h] = row[j]; });
+      if (obj['Candidate_Name'] || obj['Candidate Name']) students.push(obj);
+    }
+
+    state.students = students;
+    state.workbook = wb;
+
+    // Show file info
+    document.getElementById('fileLoaded').style.display = '';
+    document.getElementById('fileLoaded').innerHTML = `
+      <div class="file-loaded">
+        <div class="file-loaded-icon">📊</div>
+        <div>
+          <div class="file-loaded-name">${file.name}</div>
+          <div class="file-loaded-count">${students.length} students found</div>
+        </div>
+        <button class="file-remove" onclick="clearFile()">✕</button>
+      </div>`;
+    document.getElementById('step1-next').disabled = false;
+    document.getElementById('preview-section').style.display = '';
+    renderPreview();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function clearFile() {
+  state.students = []; state.workbook = null;
+  document.getElementById('fileLoaded').style.display = 'none';
+  document.getElementById('preview-section').style.display = 'none';
+  document.getElementById('step1-next').disabled = true;
+  document.getElementById('roFile').value = '';
+}
+
+function renderPreview() {
+  const cols = ['Roll_Number','Candidate_Name','Candidate_Gender','Father_Name','Candidate_Birth_date'];
+  const head = document.getElementById('preview-head');
+  const body = document.getElementById('preview-body');
+  head.innerHTML = `<tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
+  body.innerHTML = state.students.slice(0, 10).map((s,i) =>
+    `<tr>${cols.map(c=>`<td>${s[c]||''}</td>`).join('')}</tr>`
+  ).join('');
+  document.getElementById('preview-count').textContent =
+    `Showing ${Math.min(10, state.students.length)} of ${state.students.length} students`;
+}
+
+// ─── Config Auto-populate ─────────────────────────────────────────────────────
+function populateConfigFromData() {
+  if (!state.students.length) return;
+  const s = state.students[0];
+  const inst = s['Institute_Name'] || '';
+  const examDate = s['Exam Date'] || s['Exam_Date'] || '';
+  const pracDate = s['Practical Date'] || s['Practical_Date'] || '';
+
+  if (inst) setVal('cfg-institute', inst);
+  if (examDate) {
+    const d = parseDate(examDate);
+    if (d) setVal('cfg-theory-date', fmtDateInput(d));
+  }
+  if (pracDate) {
+    const d = parseDate(pracDate);
+    if (d) setVal('cfg-prac-date', fmtDateInput(d));
+  }
+  if (s['Batch']) setVal('cfg-batch', s['Batch']);
+
+  // Course-specific defaults
+  if (state.courseType === 'EAI') {
+    setVal('cfg-course-code', 'I091');
+    setVal('cfg-duration', '120 Hrs');
+    setVal('cfg-theory-time', '09:30:00');
+    setVal('cfg-prac-time', '14:00:00');
+    setVal('cfg-cycle', 'March/ 2026');
+  } else {
+    setVal('cfg-course-code', 'I090');
+    setVal('cfg-duration', '330 Hrs');
+    setVal('cfg-theory-time', '09:30:00');
+    setVal('cfg-prac-time', '15:00:00');
+    setVal('cfg-theory2-time', '12 noon');
+    setVal('cfg-cycle', 'MARCH 2026');
+  }
+}
+
+function setVal(id, v) { const el = document.getElementById(id); if (el && !el.value) el.value = v; }
+function getVal(id) { return document.getElementById(id)?.value || ''; }
+function parseDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  if (typeof v === 'number') return new Date((v - 25569) * 86400 * 1000);
+  const d = new Date(v);
+  return isNaN(d) ? null : d;
+}
+function fmtDateInput(d) {
+  return d.toISOString().slice(0,10);
+}
+function fmtDateDisp(d) {
+  if (!d) return '';
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
+
+// ─── Summary ──────────────────────────────────────────────────────────────────
+function buildSummary() {
+  const ct = state.courseType;
+  document.getElementById('summary-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Course</label><div style="padding:8px 0;font-weight:700">${ct === 'EAI' ? '🤖 Essentials of AI (I091)' : '💻 Full Stack Dev Associate (I090)'}</div></div>
+      <div class="field"><label>Institute</label><div style="padding:8px 0;font-weight:700">${getVal('cfg-institute')||'—'}</div></div>
+      <div class="field"><label>Students</label><div style="padding:8px 0;font-size:22px;font-weight:800;color:var(--accent)">${state.students.length}</div></div>
+      <div class="field"><label>Exam Cycle</label><div style="padding:8px 0;font-weight:700">${getVal('cfg-cycle')||'—'}</div></div>
+    </div>`;
+}
+
+function buildOutputGrid() {
+  const ct = state.courseType;
+  const files = ct === 'EAI' ? [
+    { id: 'attendance', icon: '📋', cls: 'attendance', name: `EAI_Attendance_${getVal('cfg-cycle').replace(/\s/g,'_')}.xlsx`, sheets: 'Theory + Practical', desc: 'Theory & Practical attendance sheets' },
+    { id: 'internal', icon: '📝', cls: 'internal', name: `EAI_Internal_Assessment_${getVal('cfg-cycle').replace(/\s/g,'_')}.xlsx`, sheets: '1 sheet', desc: 'Internal Assessment & Project marks' },
+    { id: 'result', icon: '🏆', cls: 'result', name: `EAI_Compiled_Practical_Result_HQ.xlsx`, sheets: '1 sheet', desc: 'Compiled Practical Result for HQ' },
+  ] : [
+    { id: 'attendance', icon: '📋', cls: 'attendance', name: `FSDA_Attendance_${getVal('cfg-cycle').replace(/\s/g,'_')}.xlsx`, sheets: 'Theory1 + Theory2 + Practical', desc: 'Theory (×2) & Practical attendance sheets' },
+    { id: 'internal', icon: '📝', cls: 'internal', name: `FSDA_Internal_Assessment_${getVal('cfg-cycle').replace(/\s/g,'_')}.xlsx`, sheets: '1 sheet', desc: 'ES (30) + Project (30) marks' },
+    { id: 'result', icon: '🏆', cls: 'result', name: `FSDA_Compiled_Practical_Result_HQ.xlsx`, sheets: '1 sheet', desc: 'Compiled Practical Result for HQ' },
+  ];
+
+  document.getElementById('output-grid').innerHTML = files.map(f => `
+    <div class="output-card" id="ocard-${f.id}">
+      <div class="output-card-header">
+        <div class="output-icon ${f.cls}">${f.icon}</div>
+        <div>
+          <div class="output-name">${f.desc}</div>
+          <div class="output-sheets">${f.sheets}</div>
+        </div>
+      </div>
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)">${f.name}</div>
+      <div class="output-status" id="ostatus-${f.id}">Pending</div>
+    </div>`).join('');
+}
+
+// ─── Excel Generation ─────────────────────────────────────────────────────────
+async function generateAll() {
+  document.getElementById('log-section').style.display = '';
+  document.getElementById('gen-btn').disabled = true;
+  const logArea = document.getElementById('log-area');
+  const progress = document.getElementById('progress-fill');
+  logArea.innerHTML = '';
+  const log = (msg, cls='') => {
+    logArea.innerHTML += `<div class="log-line ${cls}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+    logArea.scrollTop = logArea.scrollHeight;
+  };
+  const setStatus = (id, txt, ready=false) => {
+    const el = document.getElementById(`ostatus-${id}`);
+    if (el) { el.textContent = txt; el.className = 'output-status' + (ready?' ready':''); }
+    if (ready) document.getElementById(`ocard-${id}`)?.classList.add('generated');
+  };
+
+  log('Starting generation...', 'ok');
+  const ct = state.courseType;
+  const students = state.students;
+  const cfg = {
+    institute: getVal('cfg-institute'),
+    cycle: getVal('cfg-cycle'),
+    theoryDate: getVal('cfg-theory-date'),
+    pracDate: getVal('cfg-prac-date'),
+    theoryTime: getVal('cfg-theory-time'),
+    pracTime: getVal('cfg-prac-time'),
+    theory2Time: getVal('cfg-theory2-time'),
+    batch: getVal('cfg-batch'),
+    startDate: getVal('cfg-start-date'),
+    endDate: getVal('cfg-end-date'),
+    courseCode: getVal('cfg-course-code'),
+    rcName: getVal('cfg-rc-name'),
+    tpCode: getVal('cfg-tp-code'),
+    duration: getVal('cfg-duration'),
+  };
+
+  const courseName = ct === 'EAI' ? 'Essentials of AI (Upskilling)' : 'Full Stack Development Associate';
+  const courseNameShort = ct === 'EAI' ? 'ESSENTIALS OF AI' : 'FRONT END DEVELOPER';
+
+  // ── 1. ATTENDANCE ──────────────────────────────────────────────────────────
+  log(`Generating Attendance file (${ct})...`);
+  progress.style.width = '20%';
+  try {
+    const wb_att = XLSX.utils.book_new();
+
+    // Theory sheet builder
+    const makeTheorySheet = (label, time, prac=false) => {
+      const rows = [];
+      const t = label; // "Theory" or "Theory -1" etc
+      rows.push([`Institute: ${cfg.institute}`]);
+      rows.push([`NSQF Course: "${courseName}"${t ? ' (' + t + ')' : ''}`]);
+      rows.push(['SCHEME:NSQF', '', 'BATCH:', '', '', '', 'START DATE:', '', 'END DATE:', '', '', `EXAM CYCLE: ${cfg.cycle}`]);
+      rows.push(['Sno', 'Roll Number', 'Registration No', 'Candidate Name', 'Gender', 'Father Name', 'Mother Name', 'Candidate DOB', 'Exam Date', 'Exam Time', prac ? 'Practical Examination Attendance\n(Candidates Signature)' : 'Theory Examination Attendance\n(Candidates Signature)']);
+      rows.push([]);
+      students.forEach((s, i) => {
+        rows.push([
+          i + 1,
+          s['Roll_Number'],
+          s['Candidate_registration_no'],
+          s['Candidate_Name'],
+          s['Candidate_Gender'] === 'MALE' ? 'M' : s['Candidate_Gender'] === 'FEMALE' ? 'F' : (s['Candidate_Gender']||''),
+          s['Father_Name'],
+          s['Mother_Name'] || s['Candidate_Mother_Name'] || '',
+          s['Candidate_Birth_date'],
+          prac ? cfg.pracDate : cfg.theoryDate,
+          time
+        ]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [5,18,16,22,8,20,18,12,14,10,30].map(w=>({wch:w}));
+      ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:11}},{s:{r:1,c:0},e:{r:1,c:11}}];
+      return ws;
+    };
+
+    if (ct === 'EAI') {
+      const wsT = makeTheorySheet('Theory', cfg.theoryTime, false);
+      const wsP = makeTheorySheet('Practical Exam', cfg.pracTime, true);
+      XLSX.utils.book_append_sheet(wb_att, wsT, ' Theory ');
+      XLSX.utils.book_append_sheet(wb_att, wsP, 'Practical');
+    } else {
+      const wsT1 = makeTheorySheet('Theory -1', cfg.theoryTime, false);
+      const wsT2 = makeTheorySheet('Theory -2', cfg.theory2Time||'12 noon', false);
+      const wsP = makeTheorySheet('Practical', cfg.pracTime, true);
+      // Add Practical Award columns for FSDA
+      const pracRows = [
+        [`Institute: ${cfg.institute}`],
+        [`NSQF Course: "${courseName} (Practical)"`],
+        ['SCHEME:NSQF','','BATCH:','','','','START DATE:','END DATE:','','','',`EXAM CYCLE: ${cfg.cycle}`],
+        ['Sno','Roll_Number','Candidate_registration_no','Candidate_Name','Gender','Father_Name','Mother_Name','Candidate_ DOB','Exam_Date','Exam Time','Practical Examination Attendance\n(Candidates Signature)','Practical Awards','','',''],
+        ['','','','','','','','','','','','Marks-1\n\n(30)','Marks-2\n\n(30)','Marks-3\n\n(30)','Total Marks\n(90)'],
+      ];
+      students.forEach((s,i) => {
+        pracRows.push([
+          i+1, s['Roll_Number'], s['Candidate_registration_no'], s['Candidate_Name'],
+          s['Candidate_Gender']==='MALE'?'M':s['Candidate_Gender']==='FEMALE'?'F':(s['Candidate_Gender']||''),
+          s['Father_Name'], s['Mother_Name']||'', s['Candidate_Birth_date'],
+          cfg.pracDate, cfg.pracTime, '', '', '', '', ''
+        ]);
+      });
+      const wsPrac = XLSX.utils.aoa_to_sheet(pracRows);
+      wsPrac['!cols'] = [5,18,16,22,8,20,18,12,14,10,30,10,10,10,12].map(w=>({wch:w}));
+      XLSX.utils.book_append_sheet(wb_att, wsT1, ' Theory 1');
+      XLSX.utils.book_append_sheet(wb_att, wsT2, ' Theory 2');
+      XLSX.utils.book_append_sheet(wb_att, wsPrac, 'Practical');
+    }
+
+    const fname = `${ct}_Attendance_${cfg.cycle.replace(/[\/\s]/g,'_')}.xlsx`;
+    XLSX.writeFile(wb_att, fname);
+    setStatus('attendance', '✓ Downloaded', true);
+    log(`Attendance file ready: ${fname}`, 'ok');
+  } catch(e) {
+    log(`Attendance error: ${e.message}`, 'err');
+    setStatus('attendance', 'Error');
+  }
+
+  await sleep(300);
+  progress.style.width = '50%';
+
+  // ── 2. INTERNAL ASSESSMENT ─────────────────────────────────────────────────
+  log(`Generating Internal Assessment file...`);
+  try {
+    const wb_ia = XLSX.utils.book_new();
+    const iaRows = [];
+    iaRows.push([`Institute: ${cfg.institute}`]);
+    iaRows.push([`NSQF Course: "${courseName}"`]);
+    iaRows.push(['SCHEME:  NSQF', '', '', '', 'BATCH:', 'START DATE:', '', '', 'END DATE:', cfg.endDate ? cfg.endDate : '']);
+    if (ct === 'EAI') {
+      iaRows.push(['Sno','Roll Number','Candidate Registration No','Candidate Name','Gender','Father Name','Candidate DOB','Internal Assessment\n(20)','Project/ Assignment\n(20)']);
+    } else {
+      iaRows.push(['Sno','Roll_Number','Registration_no','Name','Gender','Father_Name','Date Of Birth','ES\n(30)','Project (30)']);
+    }
+    students.forEach((s,i) => {
+      iaRows.push([
+        i+1,
+        s['Roll_Number'],
+        s['Candidate_registration_no'],
+        s['Candidate_Name'],
+        s['Candidate_Gender']==='MALE'?'M':s['Candidate_Gender']==='FEMALE'?'F':(s['Candidate_Gender']||''),
+        s['Father_Name'],
+        s['Candidate_Birth_date'],
+        '', ''
+      ]);
+    });
+    const wsIA = XLSX.utils.aoa_to_sheet(iaRows);
+    wsIA['!cols'] = [5,18,18,22,8,20,12,14,14].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb_ia, wsIA, 'sheet1');
+    const fname2 = `${ct}_Internal_Assessment_${cfg.cycle.replace(/[\/\s]/g,'_')}.xlsx`;
+    XLSX.writeFile(wb_ia, fname2);
+    setStatus('internal', '✓ Downloaded', true);
+    log(`Internal Assessment file ready: ${fname2}`, 'ok');
+  } catch(e) {
+    log(`Internal Assessment error: ${e.message}`, 'err');
+    setStatus('internal', 'Error');
+  }
+
+  await sleep(300);
+  progress.style.width = '80%';
+
+  // ── 3. COMPILED RESULT ─────────────────────────────────────────────────────
+  log(`Generating Compiled Practical Result file...`);
+  try {
+    const wb_res = XLSX.utils.book_new();
+    const resRows = [];
+    resRows.push(['Statement of Marks List of Assessment carried out by Regional Centre for NSQF aligned Courses']);
+    resRows.push(['Name of Regional Centre:', '', '', cfg.rcName || cfg.institute]);
+    resRows.push(['Course Code :', '', '', cfg.courseCode || (ct==='EAI'?'I091':'I090')]);
+    resRows.push(['Course Name :', '', '', courseName]);
+    resRows.push(['Course Duration :', '', '', cfg.duration]);
+    resRows.push(['Dates of Online Examination :', '', '', cfg.theoryDate ? new Date(cfg.theoryDate).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '']);
+    resRows.push(['Sl.no','Roll_Number','Registration_no','Candidate_Name','Gender','Father_Name','Mother_Name','Date of Birth','Name of the Training Partner\n(Accredited Institute)','Code of The Training Partner\n(Accredited Institute)','Marks Secured By Candidate','','','','','']);
+    resRows.push(['','','','','','','','','','',ct==='EAI'?'Practical 1\n(90)':'Practical 1\n(90)','Practical 2','ES/ Internal Assessment \n(30)','OJT/ Project\n(30)','Major Project 1','Major Project 2']);
+    students.forEach((s,i) => {
+      resRows.push([
+        i+1,
+        s['Roll_Number'],
+        s['Candidate_registration_no'],
+        s['Candidate_Name'],
+        s['Candidate_Gender'],
+        s['Father_Name'],
+        s['Mother_Name'] || '',
+        s['Candidate_Birth_date'],
+        cfg.institute,
+        cfg.tpCode || '',
+        '', '', '', '', '', ''
+      ]);
+    });
+    const wsRes = XLSX.utils.aoa_to_sheet(resRows);
+    wsRes['!cols'] = [5,18,16,22,8,20,18,12,36,20,12,10,18,12,12,12].map(w=>({wch:w}));
+    wsRes['!merges'] = [{s:{r:0,c:0},e:{r:0,c:15}}];
+    XLSX.utils.book_append_sheet(wb_res, wsRes, 'Sheet1');
+    const fname3 = `${ct}_Compiled_Practical_Result_HQ.xlsx`;
+    XLSX.writeFile(wb_res, fname3);
+    setStatus('result', '✓ Downloaded', true);
+    log(`Result file ready: ${fname3}`, 'ok');
+  } catch(e) {
+    log(`Result error: ${e.message}`, 'err');
+    setStatus('result', 'Error');
+  }
+
+  progress.style.width = '100%';
+  log(`✅ All files generated successfully! Check your Downloads folder.`, 'ok');
+  document.getElementById('gen-btn').disabled = false;
+  document.getElementById('gen-btn').textContent = '✓ Done! Generate Again';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
