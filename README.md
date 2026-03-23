@@ -1,5 +1,7 @@
 # 📊 NSQF Excel Generator — NIELIT Ropar
 
+<img src="img/logo.png" width="200">
+
 ![Version](https://img.shields.io/badge/version-3.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Environment](https://img.shields.io/badge/environment-Client--Side-orange.svg)
