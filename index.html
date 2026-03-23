@@ -127,9 +127,35 @@ body::before {
   background: var(--accent);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
-.brand-mark svg { width: 20px; height: 20px; fill: #fff; }
+/* ─── NIELIT LOGO IMAGE ───────────────────────────────
+   Place your logo.png inside an img/ folder next to this
+   HTML file. The image renders at 28×28 px object-contain
+   so any aspect ratio works without cropping.
+   filter: brightness(0) invert(1) turns any logo white so
+   it reads clearly on the blue .brand-mark tile in both
+   light and dark themes (the tile is always --accent blue).
+─────────────────────────────────────────────────────── */
+.brand-logo-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+  filter: brightness(0) invert(1);
+}
+
+/* Fallback "N" badge shown when logo.png is not found */
+.brand-logo-fallback {
+  display: none;
+  width: 28px; height: 28px;
+  align-items: center; justify-content: center;
+  font-family: var(--font);
+  font-size: 17px; font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+}
 
 .brand-text {
   display: flex; flex-direction: column;
@@ -788,8 +814,10 @@ tr:hover td { background: var(--surface2); }
   <div class="header-inner">
     <a class="brand" href="#">
       <div class="brand-mark">
-        <!-- NIELIT logo -->
-        <img src="img/logo.png" height="128" width="255">
+        <!-- NIELIT logo  -->
+        <img src="img/logo.png" class="brand-logo-img" alt="NIELIT" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <!-- Fallback shown only if logo.png is missing -->
+        <span class="brand-logo-fallback" aria-hidden="true">N</span>
       </div>
       <div class="brand-text">
         <span class="brand-name">NIELIT Ropar</span>
